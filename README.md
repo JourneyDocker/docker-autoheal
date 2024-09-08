@@ -110,7 +110,7 @@ docker run -d --read-only \
     --env="AUTOHEAL_LOG_PERSIST=true" \
     --volume=/var/run/docker.sock:/var/run/docker.sock:ro \
     --volume=/opt/docker-autoheal/log.json:/opt/docker-autoheal/log.json:rw \
-    tmknight88/docker-autoheal:latest
+    journeyover/docker-autoheal:latest
 ```
 
 Will connect to the Docker host via unix socket location /var/run/docker.sock or Windows named pipe location //./pipe/docker_engine, monitor all containers, and write persistent log data to `/opt/docker-autoheal/log.json` as the user with the specified `uid:gid`
@@ -127,7 +127,7 @@ docker run -d --read-only \
     --env="AUTOHEAL_TCP_PORT=2375" \
     --env="AUTOHEAL_LOG_PERSIST=true" \
     --volume=/opt/docker-autoheal/log.json:/opt/docker-autoheal/log.json:rw \
-    tmknight88/docker-autoheal:latest
+    journeyover/docker-autoheal:latest
 ```
 
 Will connect to the Docker host via hostname or IP and the specified port, monitor only containers with a label `autoheal.monitor.enable=true`, and write persistent log data to `/opt/docker-autoheal/log.json` as the user with the specified `uid:gid`
@@ -222,11 +222,11 @@ docker run ... -v /etc/localtime:/etc/localtime:ro
 
 - [willfarrell](https://github.com/willfarrell)
 
-[GitHubReleaseBadge]: https://img.shields.io/github/actions/workflow/status/tmknight/docker-autoheal/github-release.yml?branch=main&style=flat&logo=github&color=32c855&label=generate%20release&cacheSeconds=9000
-[GitHubReleaseLink]: https://github.com/tmknight/docker-autoheal/releases
-[DockerPublishingBadge]: https://img.shields.io/github/actions/workflow/status/tmknight/docker-autoheal/docker-publish.yml?branch=main&style=flat&logo=github&color=32c855&label=publish%20image&cacheSeconds=9000
-[DockerPullsBadge]: https://img.shields.io/docker/pulls/tmknight88/docker-autoheal?style=flat&logo=docker&color=blue&cacheSeconds=9000
-[DockerSizeBadge]: https://img.shields.io/docker/image-size/tmknight88/docker-autoheal?sort=date&arch=amd64&style=flat&logo=docker&color=blue&cacheSeconds=9000
-[DockerLink]: https://hub.docker.com/r/tmknight88/docker-autoheal
-<!-- [GithubAssetDlBadge]: https://img.shields.io/github/downloads/tmknight/docker-autoheal/total?style=flat&logo=github&color=32c855&label=release%20downloads&cacheSeconds=7200
-[GithubAssetDlLink]: https://github.com/tmknight/docker-autoheal/releases -->
+[GitHubReleaseBadge]: https://img.shields.io/github/actions/workflow/status/JourneyDocker/docker-autoheal/github-release.yml?branch=main&style=flat&logo=github&color=32c855&label=generate%20release&cacheSeconds=9000
+[GitHubReleaseLink]: https://github.com/JourneyDocker/docker-autoheal/releases
+[DockerPublishingBadge]: https://img.shields.io/github/actions/workflow/status/JourneyDocker/docker-autoheal/docker-publish.yml?branch=main&style=flat&logo=github&color=32c855&label=publish%20image&cacheSeconds=9000
+[DockerPullsBadge]: https://img.shields.io/docker/pulls/journeyover/docker-autoheal?style=flat&logo=docker&color=blue&cacheSeconds=9000
+[DockerSizeBadge]: https://img.shields.io/docker/image-size/journeyover/docker-autoheal?sort=date&arch=amd64&style=flat&logo=docker&color=blue&cacheSeconds=9000
+[DockerLink]: https://hub.docker.com/r/journeyover/docker-autoheal
+<!-- [GithubAssetDlBadge]: https://img.shields.io/github/downloads/JourneyDocker/docker-autoheal/total?style=flat&logo=github&color=32c855&label=release%20downloads&cacheSeconds=7200
+[GithubAssetDlLink]: https://github.com/JourneyDocker/docker-autoheal/releases -->

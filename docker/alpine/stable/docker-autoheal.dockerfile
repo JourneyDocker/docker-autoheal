@@ -11,7 +11,7 @@ RUN apk add \
   gzip
 
 RUN [ "${TARGETARCH}" == "amd64" ] && ARCH=x86_64 || ARCH=aarch64 \
-  && curl -sLO https://github.com/tmknight/docker-autoheal/releases/latest/download/docker-autoheal-${ARCH}-unknown-linux-musl.tar.gz \
+  && curl -sLO https://github.com/JourneyDocker/docker-autoheal/releases/latest/download/docker-autoheal-${ARCH}-unknown-linux-musl.tar.gz \
   && tar -xvf docker-autoheal-${ARCH}-unknown-linux-musl.tar.gz \
   && chmod +x docker-autoheal
 
@@ -21,6 +21,7 @@ COPY --from=build /docker-autoheal /docker-autoheal
 
 RUN apk update \
   && apk upgrade --no-cache --no-progress --purge \
+  && apk add --no-cache tzdata \
   && rm -rf \
   /tmp/* \
   /var/tmp/*

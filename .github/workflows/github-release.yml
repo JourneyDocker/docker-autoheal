@@ -14,7 +14,7 @@ env:
   # name of image
   IMAGE: docker-autoheal
   # github.repository as <account>/<repo>
-  IMAGE_NAME: tmknight/docker-autoheal
+  IMAGE_NAME: JourneyDocker/docker-autoheal
   # Build args
   CONTEXT: .
   DISTRO: alpine
@@ -31,10 +31,10 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@main
 
       - name: "Create draft release"
-        uses: "taiki-e/create-gh-release-action@v1"
+        uses: taiki-e/create-gh-release-action@main
         with:
           # (optional) Path to changelog.
           changelog: CHANGELOG.md
@@ -65,10 +65,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@main
 
       - name: "Upload assets"
-        uses: "taiki-e/upload-rust-binary-action@v1"
+        uses: taiki-e/upload-rust-binary-action@main
         with:
           bin: ${{ env.IMAGE }}
           target: ${{ matrix.target }}
@@ -79,13 +79,13 @@ jobs:
   publish-release:
     name: "Publish release"
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    needs: 
+    needs:
       - "get-version"
       - "upload-assets"
     runs-on: "ubuntu-latest"
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@main
 
       - name: "Release draft"
         run: gh release edit ${{ needs.get-version.outputs.pkg-version }} --draft=false

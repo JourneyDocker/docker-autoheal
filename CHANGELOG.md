@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## 0.13.7-fix
+
+### Changed
+
+- Forked and added tzdata to the docker container because someone thinks it's not an issue for the `Docker Timezone` even though literally every comment out there on the internet says that tzdata needs to be added to alpine to make the timezone changing work correctly.
+
 ## 0.13.7
 
 ### Changed
@@ -117,7 +123,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## 0.10.0
 
-There are several breaking changes; please read carefully and refer to [README](https://github.com/tmknight/docker-autoheal/blob/main/README.md) for more details
+There are several breaking changes; please read carefully and refer to [README](https://github.com/JourneyDocker/docker-autoheal/blob/main/README.md) for more details
 
 ### Added
 
