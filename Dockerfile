@@ -4,13 +4,13 @@ FROM alpine:3.21
 RUN apk add --no-cache curl jq tzdata
 
 # Environment variables
-ENV AUTOHEAL_CONTAINER_LABEL="autoheal" \
+ENV AUTOHEAL_CONTAINER_LABEL=autoheal \
     AUTOHEAL_START_PERIOD=0 \
     AUTOHEAL_INTERVAL=5 \
     AUTOHEAL_DEFAULT_STOP_TIMEOUT=10 \
     AUTOHEAL_RESTART_THRESHOLD=5 \
     AUTOHEAL_RESTART_WINDOW=600 \
-    DOCKER_SOCK="/var/run/docker.sock" \
+    DOCKER_SOCK=/var/run/docker.sock \
     CURL_TIMEOUT=30 \
     WEBHOOK_URL="" \
     WEBHOOK_JSON_KEY="content" \

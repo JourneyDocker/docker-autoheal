@@ -41,9 +41,9 @@ echo AUTOHEAL_ONLY_MONITOR_RUNNING=${AUTOHEAL_ONLY_MONITOR_RUNNING}
 echo AUTOHEAL_RESTART_THRESHOLD=${AUTOHEAL_RESTART_THRESHOLD}
 echo AUTOHEAL_RESTART_WINDOW=${AUTOHEAL_RESTART_WINDOW}
 
-# Associative arrays to track restart counts and timestamps
-declare -A RESTART_COUNTS
-declare -A FIRST_RESTART_TIMES
+# Temporary file to store restart counts and timestamps
+RESTART_TRACKER_FILE="/tmp/autoheal_restart_tracker.txt"
+touch "$RESTART_TRACKER_FILE"
 
 docker_curl() {
   curl --max-time "${CURL_TIMEOUT}" --no-buffer -s \
@@ -178,18 +178,26 @@ then
         echo "$DATE Container $CONTAINER_NAME (${CONTAINER_SHORT_ID}) found to be restarting - don't restart"
       else
         CURRENT_TIME=$(date +%s)
-        FIRST_RESTART_TIME=${FIRST_RESTART_TIMES[$CONTAINER_ID]:-$CURRENT_TIME}
-        RESTART_COUNT=$(( ${RESTART_COUNTS[$CONTAINER_ID]:-0} + 1 ))
+        RESTART_TRACKER_LINE=$(grep "^${CONTAINER_ID} " "$RESTART_TRACKER_FILE" || true)
+
+        if [ -n "$RESTART_TRACKER_LINE" ]
+        then
+          FIRST_RESTART_TIME=$(echo "$RESTART_TRACKER_LINE" | cut -d' ' -f2)
+          RESTART_COUNT=$(echo "$RESTART_TRACKER_LINE" | cut -d' ' -f3)
+        else
+          FIRST_RESTART_TIME=$CURRENT_TIME
+          RESTART_COUNT=0
+        fi
 
         # Reset restart count and timestamp if the time window has expired
         if [ $((CURRENT_TIME - FIRST_RESTART_TIME)) -gt $AUTOHEAL_RESTART_WINDOW ]
         then
-          RESTART_COUNT=1
           FIRST_RESTART_TIME=$CURRENT_TIME
+          RESTART_COUNT=0
         fi
 
-        RESTART_COUNTS[$CONTAINER_ID]=$RESTART_COUNT
-        FIRST_RESTART_TIMES[$CONTAINER_ID]=$FIRST_RESTART_TIME
+        RESTART_COUNT=$((RESTART_COUNT + 1))
+        echo "$CONTAINER_ID $FIRST_RESTART_TIME $RESTART_COUNT" >> "$RESTART_TRACKER_FILE"
 
         if [ $RESTART_COUNT -ge $AUTOHEAL_RESTART_THRESHOLD ]
         then
