@@ -13,9 +13,9 @@ APPRISE_URL=${APPRISE_URL:-""}
 
 # only use unix domain socket if no TCP endpoint is defined
 case "${DOCKER_SOCK}" in
-  "tcp://"*) HTTP_ENDPOINT="$(echo ${DOCKER_SOCK} | sed 's#tcp://#http://#')"
+  "tcp://"*) HTTP_ENDPOINT="$(echo "${DOCKER_SOCK}" | sed 's#tcp://#http://#')"
              ;;
-  "tcps://"*) HTTP_ENDPOINT="$(echo ${DOCKER_SOCK} | sed 's#tcps://#https://#')"
+  "tcps://"*) HTTP_ENDPOINT="$(echo "${DOCKER_SOCK}" | sed 's#tcps://#https://#')"
              CA="--cacert /certs/ca.pem"
              CLIENT_KEY="--key /certs/client-key.pem"
              CLIENT_CERT="--cert /certs/client-cert.pem"
@@ -30,12 +30,20 @@ AUTOHEAL_START_PERIOD=${AUTOHEAL_START_PERIOD:-0}
 AUTOHEAL_INTERVAL=${AUTOHEAL_INTERVAL:-5}
 AUTOHEAL_DEFAULT_STOP_TIMEOUT=${AUTOHEAL_DEFAULT_STOP_TIMEOUT:-10}
 AUTOHEAL_ONLY_MONITOR_RUNNING=${AUTOHEAL_ONLY_MONITOR_RUNNING:-false}
+AUTOHEAL_RESTART_THRESHOLD=${AUTOHEAL_RESTART_THRESHOLD:-5}
+AUTOHEAL_RESTART_WINDOW=${AUTOHEAL_RESTART_WINDOW:-600}
 
 echo AUTOHEAL_CONTAINER_LABEL=${AUTOHEAL_CONTAINER_LABEL}
 echo AUTOHEAL_START_PERIOD=${AUTOHEAL_START_PERIOD}
 echo AUTOHEAL_INTERVAL=${AUTOHEAL_INTERVAL}
 echo AUTOHEAL_DEFAULT_STOP_TIMEOUT=${AUTOHEAL_DEFAULT_STOP_TIMEOUT}
 echo AUTOHEAL_ONLY_MONITOR_RUNNING=${AUTOHEAL_ONLY_MONITOR_RUNNING}
+echo AUTOHEAL_RESTART_THRESHOLD=${AUTOHEAL_RESTART_THRESHOLD}
+echo AUTOHEAL_RESTART_WINDOW=${AUTOHEAL_RESTART_WINDOW}
+
+# Associative arrays to track restart counts and timestamps
+declare -A RESTART_COUNTS
+declare -A FIRST_RESTART_TIMES
 
 docker_curl() {
   curl --max-time "${CURL_TIMEOUT}" --no-buffer -s \
@@ -75,19 +83,27 @@ restart_container() {
   docker_curl -f -X POST "${HTTP_ENDPOINT}/containers/${container_id}/restart?t=${timeout}"
 }
 
+# shellcheck disable=2039
+stop_container() {
+  local container_id="$1"
+  local timeout="$2"
+
+  docker_curl -f -X POST "${HTTP_ENDPOINT}/containers/${container_id}/stop?t=${timeout}"
+}
+
 notify_webhook() {
   local text="$@"
 
   if [ -n "$WEBHOOK_URL" ]
   then
-    # execute webhook requests as background process to prevent healer from blocking
-    curl -s -X POST -H "Content-type: application/json" -d "$(generate_webhook_payload $text)"  $WEBHOOK_URL
+     # execute webhook requests as background process to prevent healer from blocking
+    curl -s -X POST -H "Content-type: application/json" -d "$(generate_webhook_payload $text)"  "$WEBHOOK_URL"
   fi
 
   if [ -n "$APPRISE_URL" ]
   then
     # execute webhook requests as background process to prevent healer from blocking
-    curl -s -X POST -H "Content-type: application/json" -d "$(generate_apprise_payload $text)"  $APPRISE_URL
+    curl -s -X POST -H "Content-type: application/json" -d "$(generate_apprise_payload $text)"  "$APPRISE_URL"
   fi
 }
 
@@ -121,11 +137,11 @@ EOF
 
 # SIGTERM-handler
 term_handler() {
-  exit 143  # 128 + 15 -- SIGTERM
+  exit 143 # 128 + 15 -- SIGTERM
 }
 
 # shellcheck disable=2039
-trap 'kill $$; term_handler' SIGTERM
+trap 'kill $!; term_handler' SIGTERM
 
 if [ "$1" = "autoheal" ]
 then
@@ -134,10 +150,11 @@ then
     echo "unix socket is currently not available" >&2
     exit 1
   fi
+
   # Delayed startup
   if [ "$AUTOHEAL_START_PERIOD" -gt 0 ]
   then
-  echo "Monitoring containers for unhealthy status in $AUTOHEAL_START_PERIOD second(s)"
+    echo "Monitoring containers for unhealthy status in $AUTOHEAL_START_PERIOD second(s)"
     sleep "$AUTOHEAL_START_PERIOD" &
     wait $!
   fi
@@ -160,15 +177,42 @@ then
       then
         echo "$DATE Container $CONTAINER_NAME (${CONTAINER_SHORT_ID}) found to be restarting - don't restart"
       else
-        echo "$DATE Container $CONTAINER_NAME (${CONTAINER_SHORT_ID}) found to be unhealthy - Restarting container now with ${TIMEOUT}s timeout"
-        if ! restart_container "$CONTAINER_ID" "$TIMEOUT"
+        CURRENT_TIME=$(date +%s)
+        FIRST_RESTART_TIME=${FIRST_RESTART_TIMES[$CONTAINER_ID]:-$CURRENT_TIME}
+        RESTART_COUNT=$(( ${RESTART_COUNTS[$CONTAINER_ID]:-0} + 1 ))
+
+        # Reset restart count and timestamp if the time window has expired
+        if [ $((CURRENT_TIME - FIRST_RESTART_TIME)) -gt $AUTOHEAL_RESTART_WINDOW ]
         then
-          echo "$DATE Restarting container $CONTAINER_SHORT_ID failed" >&2
-          notify_webhook "Container ${CONTAINER_NAME:1} (${CONTAINER_SHORT_ID}) found to be unhealthy. Failed to restart the container!" &
-        else
-          notify_webhook "Container ${CONTAINER_NAME:1} (${CONTAINER_SHORT_ID}) found to be unhealthy. Successfully restarted the container!" &
+          RESTART_COUNT=1
+          FIRST_RESTART_TIME=$CURRENT_TIME
         fi
-        notify_post_restart_script "$CONTAINER_NAME" "$CONTAINER_SHORT_ID" "$CONTAINER_STATE" "$TIMEOUT" &
+
+        RESTART_COUNTS[$CONTAINER_ID]=$RESTART_COUNT
+        FIRST_RESTART_TIMES[$CONTAINER_ID]=$FIRST_RESTART_TIME
+
+        if [ $RESTART_COUNT -ge $AUTOHEAL_RESTART_THRESHOLD ]
+        then
+          echo "$DATE Container $CONTAINER_NAME (${CONTAINER_SHORT_ID}) has been restarted $RESTART_COUNT times within the last $AUTOHEAL_RESTART_WINDOW seconds - Stopping container now with ${TIMEOUT}s timeout"
+          if ! stop_container "$CONTAINER_ID" "$TIMEOUT"
+          then
+            echo "$DATE Stopping container $CONTAINER_SHORT_ID failed" >&2
+            notify_webhook "Container ${CONTAINER_NAME:1} (${CONTAINER_SHORT_ID}) has been restarted $RESTART_COUNT times within the last $AUTOHEAL_RESTART_WINDOW seconds. Failed to stop the container!" &
+          else
+            notify_webhook "Container ${CONTAINER_NAME:1} (${CONTAINER_SHORT_ID}) has been restarted $RESTART_COUNT times within the last $AUTOHEAL_RESTART_WINDOW seconds. Successfully stopped the container!" &
+          fi
+          notify_post_restart_script "$CONTAINER_NAME" "$CONTAINER_SHORT_ID" "$CONTAINER_STATE" "$TIMEOUT" &
+        else
+          echo "$DATE Container $CONTAINER_NAME (${CONTAINER_SHORT_ID}) found to be unhealthy - Restarting container now with ${TIMEOUT}s timeout"
+          if ! restart_container "$CONTAINER_ID" "$TIMEOUT"
+          then
+            echo "$DATE Restarting container $CONTAINER_SHORT_ID failed" >&2
+            notify_webhook "Container ${CONTAINER_NAME:1} (${CONTAINER_SHORT_ID}) found to be unhealthy. Failed to restart the container!" &
+          else
+            notify_webhook "Container ${CONTAINER_NAME:1} (${CONTAINER_SHORT_ID}) found to be unhealthy. Successfully restarted the container!" &
+          fi
+          notify_post_restart_script "$CONTAINER_NAME" "$CONTAINER_SHORT_ID" "$CONTAINER_STATE" "$TIMEOUT" &
+        fi
       fi
     done
     sleep "$AUTOHEAL_INTERVAL" &

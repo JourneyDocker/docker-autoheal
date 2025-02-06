@@ -1,30 +1,50 @@
 # Docker Autoheal
 
-Monitor and restart unhealthy docker containers. 
-This functionality was proposed to be included with the addition of `HEALTHCHECK`, however didn't make the cut.
-This container is a stand-in till there is native support for `--exit-on-unhealthy` https://github.com/docker/docker/pull/22719.
+Monitor and automatically restart unhealthy Docker containers.
 
-## Supported tags and Dockerfile links
-- [`latest` (*Dockerfile*)](https://github.com/willfarrell/docker-autoheal/blob/main/Dockerfile) - Built daily
-- [`1.1.0` (*Dockerfile*)](https://github.com/willfarrell/docker-autoheal/blob/1.1.0/Dockerfile)
-- [`v0.7.0` (*Dockerfile*)](https://github.com/willfarrell/docker-autoheal/blob/v0.7.0/Dockerfile)
+# How to Use
 
+### Docker Image Tags
 
-![](https://img.shields.io/docker/pulls/willfarrell/autoheal "Total docker pulls") [![](https://images.microbadger.com/badges/image/willfarrell/autoheal.svg)](http://microbadger.com/images/willfarrell/autoheal "Docker layer breakdown")
+The Docker image is available in multiple tag formats:
 
-## How to use
+- **`main` (Development Build)**
+  - Tracks the latest commit on the `main` branch.
+  - **Recommended for:** Developers and testers.
+  - **Note:** Updated with every commit; may include breaking changes.
 
-### 1. Docker CLI
-#### UNIX socket passthrough
+- **`latest` (Stable Release)**
+  - Points to the most recent stable release.
+  - **Recommended for:** General use in production environments.
+
+  > **Note**: Currently, there is no `latest` tag available. Please check back for updates on the availability of this tag.
+
+- **`A.B.C.D` (Versioned Releases)**
+  - Provides specific versioned releases for consistency.
+  - **Recommended for:** Environments that require version control.
+
+  > **Note**: Currently, there are no versioned tags (e.g., `A.B.C.D`) available. When they are published, each will remain fixed, ensuring a stable and unchanging image for users needing version control.
+
+## Installation Options
+
+You can pull the Docker image from either of the following registries:
+
+- `ghcr.io/journeydocker/docker-autoheal:<tagname>`
+- `journeyover/docker-autoheal:<tagname>`
+
+### 1. Running with Docker CLI
+
+#### Using UNIX Socket
 ```bash
 docker run -d \
     --name autoheal \
     --restart=always \
     -e AUTOHEAL_CONTAINER_LABEL=all \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    willfarrell/autoheal
+    journeyover/docker-autoheal:main
 ```
-#### TCP socket 
+
+#### Using TCP Socket
 ```bash
 docker run -d \
     --name autoheal \
@@ -32,9 +52,10 @@ docker run -d \
     -e AUTOHEAL_CONTAINER_LABEL=all \
     -e DOCKER_SOCK=tcp://$HOST:$PORT \
     -v /path/to/certs/:/certs/:ro \
-    willfarrell/autoheal
+    journeyover/docker-autoheal:main
 ```
-#### TCP with mTLS (HTTPS)
+
+#### Using TCP with mTLS (HTTPS)
 ```bash
 docker run -d \
     --name autoheal \
@@ -47,71 +68,65 @@ docker run -d \
     -e DOCKER_SOCK=tcps://$HOST:2376 \
     -e DOCKER_TLS_VERIFY=1 \
     -v /path/to/certs/:/certs/:ro \
-    willfarrell/autoheal
+    journeyover/docker-autoheal:main
 ```
-The certificates and keys need these names and resides under /certs inside the container:
-* ca.pem
-* client-cert.pem
-* client-key.pem
+The required certificate files inside the container:
+- `ca.pem`
+- `client-cert.pem`
+- `client-key.pem`
 
-> See https://docs.docker.com/engine/security/https/ for how to configure TCP with mTLS
+> Refer to [Docker's documentation](https://docs.docker.com/engine/security/https/) for configuring TCP with mTLS.
 
-### Change Timezone
-If you need the timezone to match the local machine, you can map the `/etc/localtime` into the container.
-```bash
-docker run ... -v /etc/localtime:/etc/localtime:ro
-```
+### 2. Docker Compose Example
 
-### 2. Use in your container image
-Choose one of the three alternatives:
-
-a) Apply the label `autoheal=true` to your container to have it watched;<br/>
-b) Set ENV `AUTOHEAL_CONTAINER_LABEL=all` to watch all running containers;<br/>
-c) Set ENV `AUTOHEAL_CONTAINER_LABEL` to existing container label that has the value `true`;<br/>
-
-> Note: You must apply `HEALTHCHECK` to your docker images first.<br/>
-> See https://docs.docker.com/engine/reference/builder/#healthcheck for details.
-
-#### Docker Compose (example)
 ```yaml
 services:
-  app:
-    extends:
-      file: ${PWD}/services.yml
-      service: app
-    labels:
-      autoheal-app: true
-
   autoheal:
+    image: journeyover/docker-autoheal:main
+    restart: always
+    network_mode: none
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal-app
     deploy:
       replicas: 1
-    environment:
-      AUTOHEAL_CONTAINER_LABEL: autoheal-app
-    image: willfarrell/autoheal:latest
-    network_mode: none
-    restart: always
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock
 ```
 
-#### Optional Container Labels
-|`autoheal.stop.timeout=20`            |Per containers override for stop timeout seconds during restart|
+### 3. Using in Your Container Image
+
+You can enable autoheal by choosing one of the following methods:
+
+- **Label-based**: Add `autoheal=true` to your container labels.
+- **Environment Variable**: Set `AUTOHEAL_CONTAINER_LABEL=all` to monitor all running containers.
+- **Custom Label**: Use `AUTOHEAL_CONTAINER_LABEL` with an existing container label that has the value `true`.
+
+> **Note:** Ensure that your Docker images have a `HEALTHCHECK` configured. See [Docker's Healthcheck Reference](https://docs.docker.com/engine/reference/builder/#healthcheck) for details.
+
+## Optional Container Labels
+| Label | Description |
 | --- | --- |
+| `autoheal.stop.timeout=20` | Overrides stop timeout (in seconds) for container restarts. |
 
 ## Environment Defaults
-|Variable                              |Description|
+| Variable | Description |
 | --- | --- |
-|`AUTOHEAL_CONTAINER_LABEL=autoheal`   |set to existing label name that has the value `true`|
-|`AUTOHEAL_INTERVAL=5`                 |check every 5 seconds|
-|`AUTOHEAL_START_PERIOD=0`             |wait 0 seconds before first health check|
-|`AUTOHEAL_DEFAULT_STOP_TIMEOUT=10`    |Docker waits max 10 seconds (the Docker default) for a container to stop before killing during restarts (container overridable via label, see below)|
-|`AUTOHEAL_ONLY_MONITOR_RUNNING=false` |All containers monitored by default. Set this to true to only monitor running containers. This will result in Paused contaners being ignored.|
-|`DOCKER_SOCK=/var/run/docker.sock`    |Unix socket for curl requests to Docker API|
-|`CURL_TIMEOUT=30`                     |--max-time seconds for curl requests to Docker API|
-|`WEBHOOK_URL=""`                      |post message to the webhook if a container was restarted (or restart failed)|
+| `AUTOHEAL_CONTAINER_LABEL=autoheal` | Monitors containers with the specified label set to `true`. |
+| `AUTOHEAL_INTERVAL=5` | Checks container health every 5 seconds. |
+| `AUTOHEAL_START_PERIOD=0` | Initial delay before the first health check (in seconds). |
+| `AUTOHEAL_DEFAULT_STOP_TIMEOUT=10` | Maximum time (in seconds) Docker waits before forcefully stopping a container. |
+| `AUTOHEAL_ONLY_MONITOR_RUNNING=false` | If `true`, only running containers are monitored (paused containers are ignored). |
+| `AUTOHEAL_RESTART_THRESHOLD=5` | The maximum number of times a container can be restarted within the `AUTOHEAL_RESTART_WINDOW` before it is stopped. |
+| `AUTOHEAL_RESTART_WINDOW=600` | The time window (in seconds) within which the restart count is tracked. If the container is restarted more than `AUTOHEAL_RESTART_THRESHOLD` times within this window, it will be stopped. |
+| `DOCKER_SOCK=/var/run/docker.sock` | Unix socket path for Docker API requests. |
+| `CURL_TIMEOUT=30` | Maximum time (in seconds) for `curl` requests to the Docker API. |
+| `WEBHOOK_URL=""` | Sends a webhook notification if a container is restarted or fails to restart. |
 
-## Testing (building locally)
+## Local Testing & Development
+
+To build and run locally:
+
 ```bash
 docker buildx build -t autoheal .
 

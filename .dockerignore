@@ -1,5 +1,26 @@
-.github
+# Directories to ignore
+.git/
+.github/
+.idea/
+.vscode/
+tests/
+
+# Ignore common archive and executable files
+*.exe
+*.zip
+*.tar.gz
+*.gz
+*.tgz
+*.rar
+*.7z
+*.jar
+
+# Ignore configuration and script files
 .gitignore
-.dockerignore
+README.md
+LICENSE
+renovate.json
+
+# Docker-specific files
 Dockerfile
-tests
+docker-compose.yml
