@@ -4,7 +4,7 @@ set -e
 # shellcheck disable=2039
 set -o pipefail
 
-VERSION="1.3.0-dev"
+VERSION="1.3.0-dev2"
 
 # LOG_LEVEL: 1=Normal (INFO/WARN/ERROR only), 2=Debug (all messages)
 LOG_LEVEL=${LOG_LEVEL:-1}
@@ -230,6 +230,10 @@ then
                 fi
 
                 RESTART_COUNT=$((RESTART_COUNT + 1))
+
+                # Remove existing entries for the current container and append the new entry
+                grep -v "^${CONTAINER_ID} " "$RESTART_TRACKER_FILE" > "${RESTART_TRACKER_FILE}.tmp" || true
+                mv "${RESTART_TRACKER_FILE}.tmp" "$RESTART_TRACKER_FILE"
                 echo "$CONTAINER_ID $FIRST_RESTART_TIME $RESTART_COUNT" >> "$RESTART_TRACKER_FILE"
 
                 if [ $RESTART_COUNT -ge $AUTOHEAL_RESTART_THRESHOLD ]
