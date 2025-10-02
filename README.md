@@ -17,13 +17,9 @@ The Docker image is available in multiple tag formats:
   - Points to the most recent stable release.
   - **Recommended for:** General use in production environments.
 
-  > **Note**: Currently, there is no `latest` tag available. Please check back for updates on the availability of this tag.
-
 - **`A.B.C.D` (Versioned Releases)**
   - Provides specific versioned releases for consistency.
   - **Recommended for:** Environments that require version control.
-
-  > **Note**: Currently, there are no versioned tags (e.g., `A.B.C.D`) available. When they are published, each will remain fixed, ensuring a stable and unchanging image for users needing version control.
 
 ## Installation Options
 

@@ -1,4 +1,4 @@
-FROM alpine:3.22
+FROM alpine:3.22.1
 
 # Install required packages
 RUN apk add --no-cache curl jq tzdata
@@ -13,7 +13,7 @@ ENV AUTOHEAL_CONTAINER_LABEL=autoheal \
     DOCKER_SOCK=/var/run/docker.sock \
     CURL_TIMEOUT=30 \
     WEBHOOK_URL="" \
-    WEBHOOK_JSON_KEY="content" \
+    WEBHOOK_JSON_KEY="text" \
     APPRISE_URL="" \
     POST_RESTART_SCRIPT=""
 

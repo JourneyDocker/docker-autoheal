@@ -4,7 +4,7 @@ set -e
 # shellcheck disable=2039
 set -o pipefail
 
-VERSION="1.3.0-dev2"
+VERSION="1.3.0"
 
 # LOG_LEVEL: 1=Normal (INFO/WARN/ERROR only), 2=Debug (all messages)
 LOG_LEVEL=${LOG_LEVEL:-1}
