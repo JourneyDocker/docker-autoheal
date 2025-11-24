@@ -1,7 +1,16 @@
-FROM alpine:3.22.2
+FROM python:3.14.0-alpine
 
 # Install required packages
-RUN apk add --no-cache curl jq tzdata
+RUN apk add --no-cache curl tzdata procps
+
+# Set working directory
+WORKDIR /app
+
+# Copy source code
+COPY autoheal/ /app/autoheal/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir requests docker
 
 # Environment variables
 ENV AUTOHEAL_CONTAINER_LABEL=autoheal \
@@ -13,16 +22,13 @@ ENV AUTOHEAL_CONTAINER_LABEL=autoheal \
     DOCKER_SOCK=/var/run/docker.sock \
     CURL_TIMEOUT=30 \
     WEBHOOK_URL="" \
-    WEBHOOK_JSON_KEY="text" \
+    WEBHOOK_JSON_ENTRY="text" \
     APPRISE_URL="" \
     POST_RESTART_SCRIPT=""
 
-# Copy entrypoint script
-COPY docker-entrypoint /
-
 # Health check to ensure the process is running
-HEALTHCHECK --interval=5s CMD pgrep -f autoheal || exit 1
+HEALTHCHECK --interval=5s CMD pgrep -f python || exit 1
 
 # Set entrypoint and default command
-ENTRYPOINT ["/docker-entrypoint"]
+ENTRYPOINT ["python", "-m", "autoheal"]
 CMD ["autoheal"]

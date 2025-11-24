@@ -5,6 +5,35 @@
 .vscode/
 tests/
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+ENV/
+env/
+.coverage
+.pytest_cache/
+htmlcov/
+
 # Ignore common archive and executable files
 *.exe
 *.zip
@@ -20,7 +49,20 @@ tests/
 README.md
 LICENSE
 renovate.json
+pyproject.toml
 
 # Docker-specific files
 Dockerfile
 docker-compose.yml
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+autoheal_logs.txt
+
+# Environment
+.env
