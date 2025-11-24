@@ -4,15 +4,16 @@ import signal
 import sys
 import time
 import os
+import threading
 from .config import Config
 from .health_monitor import monitor_containers
 from .logging_utils import setup_logging
 
 
-def signal_handler(signum, frame):
-    """Handle SIGTERM."""
-    logger.info("Received SIGTERM signal, shutting down")
-    sys.exit(143)
+def signal_handler(signum, frame, shutdown_event):
+    """Handle SIGTERM and SIGINT."""
+    logger.info(f"Received signal {signum}, shutting down gracefully")
+    shutdown_event.set()
 
 
 def main():
@@ -38,13 +39,15 @@ def main():
         logger.error("Unix socket is currently not available")
         sys.exit(1)
 
-    signal.signal(signal.SIGTERM, signal_handler)
+    shutdown_event = threading.Event()
+    signal.signal(signal.SIGTERM, lambda signum, frame: signal_handler(signum, frame, shutdown_event))
+    signal.signal(signal.SIGINT, lambda signum, frame: signal_handler(signum, frame, shutdown_event))
 
     if config.autoheal_start_period > 0:
         logger.info(f"Waiting {config.autoheal_start_period} second(s) before starting monitoring")
         time.sleep(config.autoheal_start_period)
 
-    monitor_containers(config)
+    monitor_containers(config, shutdown_event)
 
 
 if __name__ == "__main__":
