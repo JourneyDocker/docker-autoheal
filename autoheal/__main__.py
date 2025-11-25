@@ -8,18 +8,15 @@ import threading
 from .config import Config
 from .health_monitor import monitor_containers
 from .logging_utils import setup_logging
-
-
-def signal_handler(signum, frame, shutdown_event):
-    """Handle SIGTERM and SIGINT."""
-    logger.info(f"Received signal {signum}, shutting down gracefully")
-    shutdown_event.set()
-
-
 def main():
     """Main function."""
     config = Config()
     logger = setup_logging(config.log_level)
+
+    def signal_handler(signum, frame, shutdown_event):
+        """Handle SIGTERM and SIGINT."""
+        logger.info(f"Received signal {signum}, shutting down gracefully")
+        shutdown_event.set()
 
     logger.info(f"Docker Autoheal v{__import__('autoheal').__version__} starting up")
     logger.info("Configuration:")
