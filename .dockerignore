@@ -49,7 +49,6 @@ htmlcov/
 README.md
 LICENSE
 renovate.json
-pyproject.toml
 
 # Docker-specific files
 Dockerfile

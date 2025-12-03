@@ -1,16 +1,17 @@
 FROM python:3.14.1-alpine
 
 # Install required packages
-RUN apk add --no-cache curl tzdata procps
+RUN apk add --no-cache tzdata procps
 
 # Set working directory
 WORKDIR /app
 
-# Copy source code
+# Copy source code and build files
 COPY autoheal/ /app/autoheal/
+COPY requirements.txt /app/
 
 # Install Python dependencies
-RUN pip install --no-cache-dir requests docker
+RUN pip install -r requirements.txt
 
 # Environment variables
 ENV AUTOHEAL_CONTAINER_LABEL=autoheal \

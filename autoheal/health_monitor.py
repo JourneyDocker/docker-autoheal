@@ -1,6 +1,6 @@
 """Health monitoring logic."""
 
-import time
+import threading
 from .config import Config
 from .docker_api import get_container_info, restart_container, stop_container
 from .restart_tracker import RestartTracker
@@ -28,8 +28,9 @@ def monitor_containers(config: Config, shutdown_event: threading.Event):
 
                 container_id = container.id
                 container_name = container.name
+                container_name = container_name.lstrip("/")
                 container_state = container.status
-                stop_timeout = container.labels.get("autoheal.stop.timeout", config.autoheal_default_stop_timeout)
+                stop_timeout = container.labels.get("autoheal.stop.timeout", str(config.autoheal_default_stop_timeout))
 
                 short_id = container_id[:12]
 
@@ -62,7 +63,7 @@ def monitor_containers(config: Config, shutdown_event: threading.Event):
                 notify_post_restart_script(container_name, short_id, container_state, int(stop_timeout), config)
 
         except Exception as e:
-            logger.error(f"Unexpected error in monitoring loop: {e}")
+            logger.exception(f"Unexpected error in monitoring loop: {e}")
 
         if not shutdown_event.wait(config.autoheal_interval):
             continue  # timeout, continue loop

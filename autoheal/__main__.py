@@ -8,6 +8,8 @@ import threading
 from .config import Config
 from .health_monitor import monitor_containers
 from .logging_utils import setup_logging
+from . import __version__
+
 def main():
     """Main function."""
     config = Config()
@@ -18,10 +20,10 @@ def main():
         logger.info(f"Received signal {signum}, shutting down gracefully")
         shutdown_event.set()
 
-    logger.info(f"Docker Autoheal v{__import__('autoheal').__version__} starting up")
+    logger.info(f"Docker Autoheal v{__version__} starting up")
     logger.info("Configuration:")
     for key, value in config.__dict__.items():
-        if key.lower() == 'webhook_url':
+        if key.lower() in ['webhook_url', 'apprise_url']:
             # Mask sensitive URLs
             str_value = str(value)
             if str_value:
@@ -50,6 +52,9 @@ def main():
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "autoheal":
         main()
-    else:
+    elif len(sys.argv) > 1:
         # Exec other commands
         os.execvp(sys.argv[1], sys.argv[1:])
+    else:
+        print("Usage: python -m autoheal autoheal", file=sys.stderr)
+        sys.exit(1)
