@@ -1,4 +1,4 @@
-FROM python:3.14.2-alpine
+FROM python:3.14.3-alpine
 
 # Install required packages
 RUN apk add --no-cache tzdata procps
