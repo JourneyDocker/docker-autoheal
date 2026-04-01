@@ -1,20 +1,12 @@
-FROM python:3.14.3-alpine
-
-# Install required packages
-RUN apk add --no-cache tzdata procps
+# Stage 0: Base
+FROM python:3.14.3-alpine AS base
 
 # Set working directory
 WORKDIR /app
 
-# Copy source code and build files
-COPY autoheal/ /app/autoheal/
-COPY requirements.txt /app/
-
-# Install Python dependencies
-RUN pip install -r requirements.txt
-
 # Environment variables
-ENV AUTOHEAL_CONTAINER_LABEL=autoheal \
+ENV PATH="/opt/venv/bin:$PATH" \
+    AUTOHEAL_CONTAINER_LABEL=autoheal \
     AUTOHEAL_START_PERIOD=0 \
     AUTOHEAL_INTERVAL=5 \
     AUTOHEAL_DEFAULT_STOP_TIMEOUT=10 \
@@ -27,9 +19,32 @@ ENV AUTOHEAL_CONTAINER_LABEL=autoheal \
     APPRISE_URL="" \
     POST_RESTART_SCRIPT=""
 
-# Health check to ensure the process is running
-HEALTHCHECK --interval=5s CMD pgrep -f python || exit 1
+# Stage 1: Build
+FROM base AS build
+
+# Create a virtual environment
+RUN python -m venv /opt/venv
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Stage 2: Final
+FROM base AS final
+
+# Install runtime dependencies
+RUN apk add --no-cache tzdata procps
+
+# Copy the virtual environment from the build stage
+COPY --from=build /opt/venv /opt/venv
+
+# Copy the application code
+COPY autoheal/ /app/autoheal/
 
 # Set entrypoint and default command
 ENTRYPOINT ["python", "-m", "autoheal"]
 CMD ["autoheal"]
+
+# Health check to ensure the process is running
+HEALTHCHECK --interval=5s CMD pgrep -f python || exit 1
